@@ -1,4 +1,4 @@
-﻿
+#libraries
 library(rtweet)
 library(dplyr)
 library(stringr)
@@ -7,94 +7,97 @@ library(textclean)
 library(stringi)
 library(qdap)
 
+#credentials API Twitter
 consumer_key = "XXXXXXXXXX"
 consumer_secret = "XXXXXXXXXX"
 access_token <- "XXXXXXXXXX"
 access_secret <- "XXXXXXXXXX"
 
+#create token
 token <- create_token(app = "name_app", consumer_key, consumer_secret,access_token,access_secret)
 
-
+#search tweets
 df <- search_tweets(
   "#5G OR #5g", n = 250000, retryonratelimit = TRUE,include_rts = FALSE
 )
 
-#trim -> Elimina espacios iniciales y finales de una cadena
+#trim -> remove leading and trailing spaces from character strings
 trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 
-save_as_csv(df, "df_5g.csv", prepend_ids = FALSE, na = "",
-            fileEncoding = "Windows-1252")
-
+#view dataframe
 View(df)
 
-#Tamaño del dataframe
+#dataframe size
 dim(df)
 
-#Guardar data en archivo csv
+#save data in file format csv 
 save_as_csv(df, "datos_analisis_sentimiento\\df.csv", prepend_ids = TRUE, na = "",
             fileEncoding = "Windows-1252")
 
-#Leer archivo
+#read file
 df <- read.csv("datos_analisis_sentimiento\\df.csv",header = TRUE, sep = ",",check.names = TRUE, encoding="Windows-1252")
 
-#Visualizar archivo
+#view dataframe
 View(df)
 
-#Seleccionar tweets en inglés.
+#select tweets in English
 df_filter <- df %>% filter(lang == "en")
 
-#Tamaño del dataframe
+#dataframe size
 dim(df_filter)
 
-#Depurar tweets sin portada.
+#remove tweets without cover photo
 df_filter <- df_filter %>% filter(profile_banner_url != "")
 df_filter <- df_filter %>% filter(profile_banner_url != " ")
 
-#Depurar tweets sin imagen de perfil.
+#remove tweets without profile picture
 df_filter <- df_filter %>% filter(profile_image_url !="")
 df_filter <- df_filter %>% filter(profile_image_url !=" ")
 
-#Depurar location null
+#remove tweets with null location 
 df_filter <- df_filter %>% filter(location !="")
 df_filter <- df_filter %>% filter(location !=" ")
 
-#Depurar tweets null
+#remove tweets with null text 
 df_filter <- df_filter %>% filter(text !="")
 df_filter <- df_filter %>% filter(text !=" ")
 
-#Tamaño del dataframe
+#dataframe size
 dim(df_filter)
 
-#Visualizar archivo
+#view data
 View(df_filter)
 
-#Se ordenó por alfabeto
+#_____________________________#
+#Preprocessing column location
+
+#order by alphabet column location
 location_filter <- df_filter[order(df_filter$location),]
 
-#Datos únicos de location
+#unique data of location
 unique_location <- data.frame(unique(location_filter$location))
 
-#Se ordeno por alfabeto
+#order by alphabet
 unique_location <- unique_location[order(unique_location),]
 
-#Se convierte a dataframe
+#it converts to dataframe
 unique_location <- data.frame(unique_location)
 
-#Visualizar archivo
+#view data
 View(unique_location)
 
-#Decodificar letras con formato unicode.
+#decode letters with unicode format.
 "<U+041C><U+043E><U+0441><U+043A><U+0432><U+0430>, <U+0411><U+043E><U+043B><U+044C><U+0448><U+043E><U+0439> <U+041A><U+0430><U+0440><U+0435><U+0442><U+043D><U+044B><U+0439> 21\1
 "%>% 
   stri_replace_all_regex("<U\\+([[:alnum:]]+)>", "\\\\u$1") %>% 
   stri_unescape_unicode() %>% 
   stri_enc_toutf8()
 
-#Reemplazar formato unicode por su nombre.
+#replace unicode format with your country name
 i <- 1
 continue <- TRUE
 while(continue){
-  a <- trim(df_filter[i,74]) #74 -> columna location
+  a <- trim(df_filter[i,74]) #74 -> location column 
   if (is.na(a)) {
     #TRUE
     i = i + 1
@@ -153,28 +156,25 @@ while(continue){
   
 }
 
-#Se ordenó por alfabeto
+#order by alphabet location column 
 location_filter <- df_filter[order(df_filter$location),]
 
-#Datos únicos del location
+#unique data of location
 unique_location <- data.frame(unique(location_filter$location))
 
-#Se ordeno por alfabeto
+#order by alphabet
 unique_location <- unique_location[order(unique_location),]
 
-#Se convierte a dataframe
+#it converts to dataframe
 unique_location <- data.frame(unique_location)
 
-#Visualizar archivo
+#view data
 View(unique_location)
 
 View(df_filter)
 
-
-#Eliminar caracteres especiales a location
-#trash <- c("http","<U","#","&amp",'…','£','”','•','‘','–','@')
+#remove special characters to location column
 trash <- c("http","<U","#","&amp",'@')
-
 i <- 1
 continue <- TRUE
 while(continue) {
@@ -187,9 +187,10 @@ while(continue) {
   }
 }
 
+#view data
 View(df_filter)
 
-#Función limpiar
+#function clean to location column 
 clean <- function(corpus){
   corpus <- tm_map(corpus, content_transformer(tolower))
   corpus <- tm_map(corpus,removeNumbers)
@@ -202,59 +203,54 @@ clean <- function(corpus){
   return(corpus)
 }
 
-#Se convierte a corpus
+#it converts to corpus
 corpus_text <- Corpus(VectorSource(df_filter$location))
 
-#Se aplica la funciónn clean
+#function clean is applied
 corpus_text <- clean(corpus_text)
 
-#Se convierte a dataframe
+#it converts to dataframe
 corpus_text <- data.frame(corpus_text)
 
-#Se elimina primera columna
+#first column is deleted
 corpus_text <- corpus_text[,-1]
 
-#Se convierte a dataframe
+#it converts to dataframe
 corpus_text <- data.frame(corpus_text)
 
-#Se cambia el nombre a la columna
+#the name is changed to location column
 colnames(corpus_text)[1]<-'location'
 
-#Se elimina columna location del df_filter 
+#location column is removed from df_filter
 df_filter <- df_filter[,-74]
 
-#Se añade nueva columna preprocesada
+#add column preprocessed
 df_filter <- cbind(df_filter,corpus_text)
 
-#Visualizar archivo
+#view data
 View(df_filter)
 
-#Depurar location null
+#remove null locations
 df_filter <- df_filter %>% filter(location !="")
 df_filter <- df_filter %>% filter(location !=" ")
 
-#Visualizar archivo
+#view data
 View(df_filter)
 
-#Depurar tweets duplicados.
+#remove duplicates tweets 
 df_filter <- distinct(df_filter)
 
-#__________________________________________
-#Reemplazar nombre de localizacion por su similar: ejemplo: Estados Unidos -> usa
-
+#replace by their country, for instance california usawas replace by usa.
 i <- 1
-
 continue <- TRUE
 while(continue){
   texto <- trim(df_filter[i,90])
-  #eliminar tildes
+  #remove accents to words
   texto <- chartr('ãáéíóúüé','aaeiouue', texto)
   
   if (is.na(texto)) {
-    #TRUE
     i = i + 1
   }
-  
   else if (texto == "caracas venezuela") {
     df_filter[i,90] <- "venezuela"
     i = i + 1
@@ -418,49 +414,26 @@ while(continue){
   if(i > nrow(df_filter)){
     continue <- FALSE
   }
-  
 }
 
-#Obtener columna location
-probar_freq <- data.frame(df_filter[,90])
-colnames(probar_freq)[1]<-"location"
-View(probar_freq)
-
-
-#Filtar datos con location vacias.
-probar_freq <- probar_freq %>% filter(location !="")
-View(probar_freq)
-
-#Tabla de frecuencia location
-tabla_freq <- probar_freq %>% 
-  count(location)  %>% 
-  arrange(desc(n)) 
-
-View(tabla_freq)
-
-total <- sum(tabla_freq$n)
-
-tabla_freq$porcentage <- tabla_freq$n * 100 / total
-
-View(tabla_freq)
-#######
-dim(df_filter)
-
-#Depurar location null
+#remove null locations
 df_filter <- df_filter %>% filter(location !="")
 df_filter <- df_filter %>% filter(location !=" ")
 
-#Visualizar archivo
+#view data
 View(df_filter)
 
-#Seleccionar columna text
+
+#_________________________#
+#Preprocessing text column
+
+#select text column 
 select_text <- df_filter$text
 respaldo <- select_text
 select_text <- respaldo
 
-#Eliminar caracteres especiales a text
+#remove special characters to text column
 trash <- c("http","<U","#","&amp")
-#trash <- c("http","#","<U","&amp",'£','”','•','‘','—')
 i <- 1
 continue <- TRUE
 while(continue) {
@@ -475,7 +448,7 @@ while(continue) {
 
 View(select_text)
 
-#Función preprocesamiento text
+#function clean_text to text column
 clean_text <- function(corpus){
   corpus <- tm_map(corpus, replace_email)
   corpus <- tm_map(corpus, removeURLhttps)
@@ -509,42 +482,42 @@ clean_text <- function(corpus){
   corpus <- tm_map(corpus, content_transformer(gsub), pattern = "[–]+", replacement = "")
   corpus <- tm_map(corpus, removePunctuation)
   corpus <- tm_map(corpus, content_transformer(tolower))
-  #corpus <- tm_map(corpus, stemDocument) #recorta palabras
   corpus <- tm_map(corpus, stripWhitespace)
   return(corpus)
 }
 
-#Se convierte de tipo corpus 
+#it converts to corpus 
 select_text <- Corpus(VectorSource(select_text))
 
-#Se aplica la función clean_text
+#function clean_text is applied
 select_text <- clean_text(select_text)
 
-#Se convierte a dataframe
+#it converts to dataframe
 select_text <-  as.data.frame(select_text)
 
-#Se elimina columna doc_id
+#delete doc_id column
 select_text <- select_text[,-1]
 
-#Se convierte a dataframe
+#it converts to dataframe
 select_text <- as.data.frame(select_text)
 
-#Se cambia el nombre a la columnat ext
+#name is changed to text column
 colnames(select_text)[1]<-'text'
 
+#remove punctuation 
 select_text <- as.data.frame(lapply(select_text, function(y) gsub("[[:punct:]]", "", y)))
 select_text <- as.data.frame(lapply(select_text, function(y) gsub(",,", "", y)))
 
-#Se elimina la columna text de 
+#delete text column of df_filter 
 df_filter <- df_filter[,-5]
 
+#view data
 View(df_filter)
 
-
-#Eliminar espacios al inicio y final de tweet
+#remove leading and trailing spaces from character strings
 select_text <- as.data.frame(apply(select_text,2,function(x)gsub("^\\s+|\\s+$", "", x)))
 
-#cambiar text a formato latin-ascii
+#change text to latin-ascii format
 i <- 1
 continue <- TRUE
 while(continue){
@@ -564,87 +537,94 @@ while(continue){
 }
 select_text <- read.csv("datos_analisis_sentimiento\\beta_text.csv", header = F, sep = ",",check.names = FALSE)
 
-
+#name change to column
 colnames(select_text)[1] <- "text"
 
-View(select_text)
-
-#Se añade nueva columna preprocesada text
+#preprocessed column is added
 df_filter <- cbind(df_filter,select_text)
 
-#respaldo
+#data backup to df_filter2
 df_filter2 <- df_filter
 
-#Depurar tweets duplicados.
+#delete duplicates tweets
 df_filter2 <- df_filter2[!duplicated(df_filter2$text), ]
 
-#Seleccionar tweets mayores a 80
+#filter tweets at least 80 characters
 df_filter2 <- df_filter2 %>% filter(nchar(as.character(text))>80)
 
-#Guardar data en archivo csv
+#save file in csv format 
 save_as_csv(df_filter2, "datos_analisis_sentimiento\\df_final.csv", prepend_ids = FALSE, na = "",
             fileEncoding = "Windows-1252")
 
-#__________________________________________________
-View(df_filter2)
-#Freq Column location -> %
-#Obtener columna location
+
+#_______________________________________#
+#Publications of countries in percentage
+
+#get location column
 probar_freq <- data.frame(df_filter2[,89])
 colnames(probar_freq)[1]<-"location"
 View(probar_freq)
 
-#Filtar datos con location vacias.
+#remove null locations.
 probar_freq <- probar_freq %>% filter(location !="")
 probar_freq <- probar_freq %>% filter(location !=" ")
 View(probar_freq)
 
-#Tabla de frecuencia location
+#frequency table location
 tabla_freq <- probar_freq %>% 
   count(location)  %>% 
   arrange(desc(n)) 
 
+#view data
 View(tabla_freq)
 
 total <- sum(tabla_freq$n)
 
 tabla_freq$porcentage <- tabla_freq$n * 100 / total
 
+#view data
 View(tabla_freq)
-#__________________________________________________
 
-#Seleccionar columna text
+
+#___________________________#
+#Preprocessing 2 text column
+
+#select text column
 select_colum_text <- df_filter2$text
 
-#Se convierte a dataframe
+#it convert to dataframe
 select_colum_text <-  as.data.frame(select_colum_text)
 
-#Delete caracter -> ,,
+#delete character -> ,,
 select_colum_text <- as.data.frame(lapply(select_colum_text, function(y) gsub(",,", "", y)))
-
 
 select_colum_text <- as.data.frame(apply(select_colum_text,2,function(x)gsub("^\\s+|\\s+$", "", x)))
 
+#size dataframe
 dim(select_colum_text)
 
-#Se cambia el nombre a la columnat text
+#name is changed to text column
 colnames(select_colum_text)[1]<-'text'
 
-#Guardar data en archivo csv
+#save file in csv format 
 save_as_csv(select_colum_text, "datos_analisis_sentimiento\\df_text.csv", prepend_ids = FALSE, na = "",
             fileEncoding = "Windows-1252")
 
 
-#______________________________________
-#1 ->positivo
-#2->negativo
-#0->neutro
+#_____________________________________________#
+#Assign label in positive, negative or neutral.
+
+#1 -> positive
+#2-> negative
+#0-> neutral
+
 data_score <- read.csv("datos_analisis_sentimiento\\data_score.csv", header = FALSE, sep = ",", check.names = TRUE)
 
+#name is changed to column
 colnames(data_score)[1] <- "score"
 
 continuar <- TRUE
 i <- 1
-
 while (continuar) {
   v_score <- as.matrix(data_score[i,1])
   if(v_score > 0 ){
@@ -667,25 +647,34 @@ while (continuar) {
   }
 }
 
+#view data
 View(data_score)
 
-
+#read data
 df_text <- read.csv("datos_analisis_sentimiento\\df_text.csv", header = TRUE, sep = ",",check.names = TRUE)
 
-#se une tweet con score
+#each tweets with your score
 tweets_score <- cbind(df_text,data_score)
 
+#save data
 save_as_csv(tweets_score, "datos_analisis_sentimiento\\tweets_score.csv", prepend_ids = FALSE, na = "",
             fileEncoding = "Windows-1252")
 
-#___________________________________
-#Columna hashtags freq
+#Final file is loaded in Google CloudAutoML Natural Language Sentiment Analysis Tool.
+
+#__________________#
+#Hashtags frequency
+
+#select hashtags column
 hashtags <- df_filter2$hashtags
+
+#convert to corpus
 hashtags <- Corpus(VectorSource(hashtags))
-#Generar tabla de freq
+
+#generate TermDocumentMatrix to hashtags
 dtm <- TermDocumentMatrix(hashtags)
 m <- as.matrix(dtm)
 v <- sort(rowSums(m),decreasing = TRUE)
 d <- data.frame(word = names(v),freq = v)
-#d2 <- head(d,20)
+#view data
 View(d)
