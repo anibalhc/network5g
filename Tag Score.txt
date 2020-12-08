@@ -1,0 +1,7 @@
+Tag Score
+positive -> 1
+negativo -> 2
+neutral -> 0
+
+dataset in google drive:
+https://drive.google.com/drive/folders/1tgY-WtTQC5diveaeLzEXTMfgjpkwcEPe?usp=sharing
